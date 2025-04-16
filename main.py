@@ -19,21 +19,35 @@ console = Console()
 
 # Header & footer builders
 
+import platform
+import socket
+
 def make_header():
     now = time.strftime("%Y-%m-%d %H:%M:%S")
     uptime_s = time.time() - psutil.boot_time()
     days = int(uptime_s // 86400)
-    hms  = time.strftime("%H:%M:%S", time.gmtime(uptime_s))
-    up   = f"{days}d {hms}" if days else hms
+    hms = time.strftime("%H:%M:%S", time.gmtime(uptime_s))
+    up = f"{days}d {hms}" if days else hms
 
-    return Layout(name="header").split_row(
-        Panel(now, title="⏰ Now",    border_style="blue"),
-        Panel(up,   title="🕒 Uptime", border_style="green")
+    # OS info
+    os_name = platform.system()
+    os_version = platform.release()
+    kernel = platform.version()
+    hostname = socket.gethostname()
+
+    os_info = f"{os_name} {os_version}\n{kernel}\nHost: {hostname}"
+
+    layout = Layout(name="header")
+    layout.split_row(
+        Panel(now, title="⏰ Time", border_style="blue"),
+        Panel(up, title="🕒 Uptime", border_style="green"),
+        Panel(os_info, title="💻 OS Info", border_style="cyan")
     )
+    return layout
 
 
 def make_footer():
-    return Panel("Press Ctrl+C to quit", style="dim")
+    return Panel("Press Ctrl+C to quit", style="dim", border_style="dim" )
 
 
 def build_layout(ema_cpu, prev_net, interval):
