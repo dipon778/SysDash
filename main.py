@@ -1,78 +1,96 @@
 import psutil
 import time
+from collections import deque
 from rich.console import Console
+from rich.live import Live
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
 
 console = Console()
 
-def display_cpu_usage():
-    cpu_usage = psutil.cpu_percent(interval=1, percpu=True)
-    avg_cpu_usage = sum(cpu_usage) / len(cpu_usage)
-    table = Table(title="CPU Usage")
-    table.add_column("Core", justify="center", style="cyan")
-    table.add_column("Usage (%)", justify="center", style="magenta")
-    
-    for i, usage in enumerate(cpu_usage):
-        table.add_row(f"Core {i}", f"{usage}%")
-    
-    table.add_row("Average", f"{avg_cpu_usage:.2f}%")
-    console.print(table)
+def get_size(bytes, suffix="B"):
+    factor = 1024
+    for unit in ["", "K", "M", "G", "T"]:
+        if bytes < factor:
+            return f"{bytes:.2f} {unit}{suffix}"
+        bytes /= factor
+    return f"{bytes:.2f} P{suffix}"
 
-def display_memory_usage():
-    memory = psutil.virtual_memory()
+def make_system_table(ema_cpu, alpha=0.3):
+    cpu_now = psutil.cpu_percent(interval=None, percpu=True)
+    # initialize EMA if empty
+    if not ema_cpu:
+        for u in cpu_now:
+            ema_cpu.append(u)
+    # update EMA
+    for i, u in enumerate(cpu_now):
+        ema_cpu[i] = alpha * u + (1 - alpha) * ema_cpu[i]
+    avg = sum(ema_cpu) / len(ema_cpu)
+
+    # build table
+    tbl = Table(title="🧠 CPU Usage", title_justify="center", style="cyan")
+    tbl.add_column("Core", justify="center", style="magenta")
+    tbl.add_column("Usage (%)", justify="center", style="green")
+    for i, u in enumerate(ema_cpu):
+        tbl.add_row(f"Core {i}", f"{u:5.1f}%")
+    tbl.add_row("[bold]Average[/bold]", f"[bold yellow]{avg:5.1f}%[/bold yellow]")
+    
+    # memory
+    mem = psutil.virtual_memory()
     swap = psutil.swap_memory()
-    table = Table(title="Memory Usage")
-    table.add_column("Type", justify="center", style="cyan")
-    table.add_column("Total (GB)", justify="center", style="magenta")
-    table.add_column("Used (GB)", justify="center", style="magenta")
-    table.add_column("Free (GB)", justify="center", style="magenta")
-    
-    table.add_row("RAM", f"{memory.total / (1024 ** 3):.2f}", f"{memory.used / (1024 ** 3):.2f}", f"{memory.free / (1024 ** 3):.2f}")
-    table.add_row("Swap", f"{swap.total / (1024 ** 3):.2f}", f"{swap.used / (1024 ** 3):.2f}", f"{swap.free / (1024 ** 3):.2f}")
-    
-    console.print(table)
+    mem_tbl = Table(title="🧮 Memory", title_justify="center", style="cyan")
+    mem_tbl.add_column("Type", style="magenta")
+    mem_tbl.add_column("Total", justify="center")
+    mem_tbl.add_column("Used", justify="center", style="yellow")
+    mem_tbl.add_column("Free", justify="center", style="green")
+    mem_tbl.add_row("RAM", get_size(mem.total), get_size(mem.used), get_size(mem.available))
+    mem_tbl.add_row("Swap", get_size(swap.total), get_size(swap.used), get_size(swap.free))
 
-def display_disk_usage():
+    # disk
     disk = psutil.disk_usage('/')
-    table = Table(title="Disk Usage")
-    table.add_column("Total (GB)", justify="center", style="cyan")
-    table.add_column("Used (GB)", justify="center", style="magenta")
-    table.add_column("Free (GB)", justify="center", style="magenta")
-    
-    table.add_row(f"{disk.total / (1024 ** 3):.2f}", f"{disk.used / (1024 ** 3):.2f}", f"{disk.free / (1024 ** 3):.2f}")
-    console.print(table)
+    disk_tbl = Table(title="💾 Disk", title_justify="center", style="cyan")
+    disk_tbl.add_column("Total", style="magenta")
+    disk_tbl.add_column("Used", justify="center", style="yellow")
+    disk_tbl.add_column("Free", justify="center", style="green")
+    disk_tbl.add_row(get_size(disk.total), get_size(disk.used), get_size(disk.free))
 
-def display_network_usage():
-    net_io = psutil.net_io_counters()
-    table = Table(title="Network Usage")
-    table.add_column("Type", justify="center", style="cyan")
-    table.add_column("Bytes Sent", justify="center", style="magenta")
-    table.add_column("Bytes Received", justify="center", style="magenta")
-    
-    table.add_row("Network", f"{net_io.bytes_sent}", f"{net_io.bytes_recv}")
-    console.print(table)
+    # network
+    net = psutil.net_io_counters()
+    net_tbl = Table(title="🌐 Network I/O", title_justify="center", style="cyan")
+    net_tbl.add_column("Direction", style="magenta")
+    net_tbl.add_column("Transferred", justify="center", style="green")
+    net_tbl.add_row("Sent", get_size(net.bytes_sent))
+    net_tbl.add_row("Recv", get_size(net.bytes_recv))
 
-def display_uptime():
-    uptime = time.time() - psutil.boot_time()
-    uptime_str = time.strftime("%H:%M:%S", time.gmtime(uptime))
-    console.print(Panel(Text(f"Uptime: {uptime_str}", style="green")))
+    # uptime & clock
+    uptime_s = time.time() - psutil.boot_time()
+    days = int(uptime_s // 86400)
+    hms = time.strftime("%H:%M:%S", time.gmtime(uptime_s))
+    up_panel = Panel(Text(f"{days}d {hms}" if days else hms, style="green"),
+                     title="🕒 Uptime", title_align="left")
+    clock_panel = Panel(Text(time.strftime("%Y-%m-%d %H:%M:%S"), style="blue"),
+                        title="⏰ Now", title_align="left")
 
-def display_clock():
-    current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-    console.print(Panel(Text(f"Current Time: {current_time}", style="blue")))
+    # assemble
+    layout = Table.grid()
+    layout.add_row(clock_panel, up_panel)
+    layout.add_row(tbl)
+    layout.add_row(mem_tbl)
+    layout.add_row(disk_tbl, net_tbl)
+    return layout
 
 def main():
-    while True:
-        console.clear()
-        display_cpu_usage()
-        display_memory_usage()
-        display_disk_usage()
-        display_network_usage()
-        display_uptime()
-        display_clock()
-        time.sleep(1)
+    ema_cpu = deque()
+    with Live(console=console, refresh_per_second=4) as live:
+        try:
+            while True:
+                table = make_system_table(ema_cpu, alpha=0.3)
+                live.update(table)
+                time.sleep(0.25)
+        except KeyboardInterrupt:
+            console.clear()
+            console.print("[bold green]Exited gracefully – goodbye![/bold green]")
 
 if __name__ == "__main__":
     main()

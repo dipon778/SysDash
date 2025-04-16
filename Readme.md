@@ -28,13 +28,3 @@ You can build this with either:
 Super quick to get going.
 
 Use psutil, rich, textual, or curses.
-
-✅ Rust
-Beautiful performance, great learning curve.
-
-Use sysinfo, crossterm, ratatui.
-
-✅ Go
-Fast and clean.
-
-Use gopsutil, termui, or bubbletea.
