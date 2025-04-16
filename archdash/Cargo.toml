@@ -1,0 +1,10 @@
+[package]
+name = "sysdash"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sysinfo = "0.30.0"    # For system information gathering
+ratatui = "0.24.0"    # For terminal UI framework
+crossterm = "0.27.0"  # For terminal manipulation
+anyhow = "1.0"        # For error handling
