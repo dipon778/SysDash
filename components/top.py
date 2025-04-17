@@ -2,26 +2,24 @@ import psutil
 from rich.table import Table
 from rich.panel import Panel
 
-def get_top_processes_panel(limit=5):
-    """Return a Panel showing top processes by CPU usage."""
-    procs = []
-    for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+def get_top_processes_panel():
+    """Generate a panel displaying the top processes by CPU usage."""
+    # Filter out processes with None as cpu_percent and sort by CPU usage
+    processes = sorted(
+        (p for p in psutil.process_iter(['pid', 'name', 'cpu_percent']) if p.info['cpu_percent'] is not None),
+        key=lambda p: p.info['cpu_percent'],
+        reverse=True
+    )[:5]
+
+    table = Table(title="Top Processes", show_header=True, header_style="bold magenta")
+    table.add_column("PID", justify="right")
+    table.add_column("Name", justify="left")
+    table.add_column("CPU %", justify="right")
+
+    for proc in processes:
         try:
-            procs.append(p.info)
+            table.add_row(str(proc.info['pid']), proc.info['name'], f"{proc.info['cpu_percent']:.1f}")
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
-    # Sort by CPU usage descending
-    procs.sort(key=lambda p: p['cpu_percent'], reverse=True)
-    top = procs[:limit]
-
-    table = Table(title="🔥 Top Apps", box=None, expand=True)
-    table.add_column("PID", justify="right")
-    table.add_column("Name", style="cyan")
-    table.add_column("CPU %", justify="right")
-    table.add_column("Mem %", justify="right")
-
-    for p in top:
-        table.add_row(str(p['pid']), p['name'][:20], f"{p['cpu_percent']:.1f}", f"{p['memory_percent']:.1f}")
-
-    return Panel(table, border_style="red")
+    return Panel(table, title="🔥 Top Apps", border_style="red")

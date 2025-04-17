@@ -21,27 +21,29 @@ console = Console()
 
 # Helper functions for header and footer
 def make_header():
-    """Build the header layout with system time, uptime, and OS info."""
+    """Build the header layout with system time and uptime."""
     now = time.strftime("%Y-%m-%d %H:%M:%S")
     uptime_s = time.time() - psutil.boot_time()
     days = int(uptime_s // 86400)
     hms = time.strftime("%H:%M:%S", time.gmtime(uptime_s))
     uptime = f"{days}d {hms}" if days else hms
 
+    header = Layout(name="header")
+    header.split_row(
+        Panel(now, title="⏰ Time", border_style="blue"),
+        Panel(uptime, title="🕒 Uptime", border_style="green"),
+    )
+    return header
+
+def get_os_info_panel():
+    """Generate a panel displaying OS information."""
     os_name = platform.system()
     os_version = platform.release()
     kernel = platform.version()
     hostname = socket.gethostname()
 
     os_info = f"{os_name} {os_version}\n{kernel}\nHost: {hostname}"
-
-    header = Layout(name="header")
-    header.split_row(
-        Panel(now, title="⏰ Time", border_style="blue"),
-        Panel(uptime, title="🕒 Uptime", border_style="green"),
-        Panel(os_info, title="💻 OS Info", border_style="cyan")
-    )
-    return header
+    return Panel(os_info, title="💻 OS Info", border_style="cyan")
 
 def make_footer():
     """Build the footer layout with a quit message."""
@@ -49,7 +51,7 @@ def make_footer():
 
 # Layout builder
 def build_layout(ema_cpu, prev_net, interval):
-    """Construct the main layout with CPU, memory, disk, and network panels."""
+    """Construct the main layout with CPU, memory, disk, network, and top apps panels."""
     root = Layout()
     root.split_column(
         make_header(),
@@ -57,19 +59,22 @@ def build_layout(ema_cpu, prev_net, interval):
         make_footer()
     )
 
-    # Left: CPU & Memory
+    # Left: CPU, Memory, and Top Apps
     left = Layout()
     left.split_column(
         get_cpu_panel(ema_cpu),
         get_memory_panel(),
+        get_top_processes_panel(),  
+            # Add the Top Apps panel here
     )
 
-    # Right: Disk & Network
+    # Right: Disk, Network, and OS Info
     right = Layout()
     net_panel, new_net = get_network_panel(prev_net, interval)
     right.split_column(
         get_disk_panel(),
         net_panel,
+        get_os_info_panel(),  # Add OS info here
     )
 
     root['body'].split_row(left, right)
