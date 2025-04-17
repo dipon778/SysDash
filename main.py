@@ -110,7 +110,3 @@ def show_exit_message(live):
 
 if __name__ == "__main__":
     main()
-
-
-git config  user.email "dipon778@gmail.com"
-git config user.name "Dipon"
