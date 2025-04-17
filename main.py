@@ -104,10 +104,16 @@ def main():
 
                 layout, prev = build_layout(ema, prev, interval)
                 live.update(layout)
-                time.sleep(0.75)
+                time.sleep(1)
+                
         except KeyboardInterrupt:
             console.clear()
-            console.print("[bold green]Goodbye![/bold green]")
-
+            layout = Layout()
+            layout.split(
+                Panel(" Thanks for using the system monitor!" , style="bold green"),
+            )
+            live.update(layout)
+            time.sleep(2)
+            
 if __name__ == "__main__":
     main()
