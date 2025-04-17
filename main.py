@@ -11,7 +11,7 @@ from components.cpu import get_cpu_panel
 from components.memory import get_memory_panel
 from components.disk import get_disk_panel
 from components.network import get_network_panel
-from components.utils import get_size
+from components.utils import get_size, get_time_date
 from components.top import get_top_processes_panel
 
 import platform
@@ -21,8 +21,8 @@ console = Console()
 
 # Helper functions for header and footer
 def make_header():
-    """Build the header layout with system time and uptime."""
-    now = time.strftime("%Y-%m-%d %H:%M:%S")
+    """Build the header layout with system time, date, and uptime."""
+    current_time = get_time_date()
     uptime_s = time.time() - psutil.boot_time()
     days = int(uptime_s // 86400)
     hms = time.strftime("%H:%M:%S", time.gmtime(uptime_s))
@@ -30,7 +30,7 @@ def make_header():
 
     header = Layout(name="header")
     header.split_row(
-        Panel(now, title="⏰ Time", border_style="blue"),
+        Panel(current_time, title="⏰ Time & Date", border_style="blue"),
         Panel(uptime, title="🕒 Uptime", border_style="green"),
     )
     return header
@@ -64,8 +64,7 @@ def build_layout(ema_cpu, prev_net, interval):
     left.split_column(
         get_cpu_panel(ema_cpu),
         get_memory_panel(),
-        get_top_processes_panel(),  
-            # Add the Top Apps panel here
+        get_top_processes_panel(),
     )
 
     # Right: Disk, Network, and OS Info

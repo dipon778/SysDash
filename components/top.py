@@ -11,15 +11,21 @@ def get_top_processes_panel():
         reverse=True
     )[:5]
 
-    table = Table(title="Top Processes", show_header=True, header_style="bold magenta")
-    table.add_column("PID", justify="right")
-    table.add_column("Name", justify="left")
-    table.add_column("CPU %", justify="right")
+    # Create a table without a title, similar to the memory panel
+    table = Table(box=None, expand=True)
+    table.add_column("PID", justify="right", style="cyan")
+    table.add_column("Name", justify="left", style="bold yellow")
+    table.add_column("CPU %", justify="right", style="green")
 
     for proc in processes:
         try:
-            table.add_row(str(proc.info['pid']), proc.info['name'], f"{proc.info['cpu_percent']:.1f}")
+            table.add_row(
+                str(proc.info['pid']),
+                proc.info['name'] or "N/A",
+                f"{proc.info['cpu_percent']:.1f}"
+            )
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
-    return Panel(table, title="🔥 Top Apps", border_style="red")
+    # Return a panel with a consistent border style
+    return Panel(table, title="🔥 Top Apps", border_style="cyan")
